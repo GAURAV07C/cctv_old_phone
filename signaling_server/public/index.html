@@ -474,9 +474,6 @@
         peerConnection.close();
       }
 
-      incomingMediaStream = new MediaStream();
-      remoteVideo.srcObject = incomingMediaStream;
-
       peerConnection = new RTCPeerConnection(iceConfig);
 
       peerConnection.onconnectionstatechange = () => {
@@ -489,11 +486,25 @@
       };
 
       peerConnection.ontrack = (event) => {
-        console.log('[Remote Track Received]', event.track.kind);
-        incomingMediaStream.addTrack(event.track);
+        console.log('[Remote Track Received]', event.track.kind, event.streams);
+        
+        if (event.streams && event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+        } else {
+          let stream = remoteVideo.srcObject;
+          if (!stream || !(stream instanceof MediaStream)) {
+            stream = new MediaStream();
+            remoteVideo.srcObject = stream;
+          }
+          stream.addTrack(event.track);
+          remoteVideo.srcObject = stream;
+        }
 
-        const tracks = incomingMediaStream.getTracks().map(t => t.kind).join(', ');
-        document.getElementById('diagTracks').innerText = tracks;
+        const currentStream = remoteVideo.srcObject;
+        if (currentStream && currentStream.getTracks) {
+          const tracks = currentStream.getTracks().map(t => t.kind).join(', ');
+          document.getElementById('diagTracks').innerText = tracks;
+        }
 
         document.getElementById('placeholder').style.display = 'none';
         document.getElementById('liveBadge').style.display = 'inline-block';
