@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+
 import 'signaling_service.dart';
 
 class WebRTCService {
@@ -62,7 +63,7 @@ class WebRTCService {
         },
         'facingMode': isFrontCamera ? 'user' : 'environment',
         'optional': [],
-      }
+      },
     };
 
     try {
@@ -86,6 +87,16 @@ class WebRTCService {
   Future<void> handleNewViewer(String viewerSocketId) async {
     debugPrint('[WebRTC Camera] Connecting to viewer: $viewerSocketId');
 
+    if (localStream == null) {
+      await startLocalCamera();
+    }
+    if (localStream == null) {
+      debugPrint(
+        '[WebRTC Camera] Cannot create offer: local camera unavailable',
+      );
+      return;
+    }
+
     final pc = await createPeerConnection(_iceConfiguration);
     _peerConnections[viewerSocketId] = pc;
 
@@ -101,7 +112,9 @@ class WebRTCService {
     };
 
     pc.onConnectionState = (state) {
-      debugPrint('[WebRTC Camera] Viewer $viewerSocketId connection state: $state');
+      debugPrint(
+        '[WebRTC Camera] Viewer $viewerSocketId connection state: $state',
+      );
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected ||
           state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
           state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
@@ -117,9 +130,13 @@ class WebRTCService {
     await pc.setLocalDescription(offer);
 
     signalingService.sendOffer(viewerSocketId, offer.toMap());
+    debugPrint('[WebRTC Camera] Offer sent to viewer: $viewerSocketId');
   }
 
-  Future<void> handleAnswerFromViewer(dynamic sdp, String viewerSocketId) async {
+  Future<void> handleAnswerFromViewer(
+    dynamic sdp,
+    String viewerSocketId,
+  ) async {
     final pc = _peerConnections[viewerSocketId];
     if (pc != null) {
       final answer = RTCSessionDescription(sdp['sdp'], sdp['type']);
@@ -127,7 +144,10 @@ class WebRTCService {
     }
   }
 
-  Future<void> handleViewerIceCandidate(dynamic candidateData, String viewerSocketId) async {
+  Future<void> handleViewerIceCandidate(
+    dynamic candidateData,
+    String viewerSocketId,
+  ) async {
     final pc = _peerConnections[viewerSocketId];
     if (pc != null && candidateData != null) {
       final candidate = RTCIceCandidate(

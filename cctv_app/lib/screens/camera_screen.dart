@@ -165,9 +165,11 @@ class _CameraScreenState extends State<CameraScreen> {
         'Viewer connected',
         '$_activeViewers viewer connected',
       );
+      // Keep the outgoing track enabled while creating the offer, matching a
+      // normal two-person WebRTC call. Disable it only after negotiation.
+      await _webrtcService.setCameraEnabled(true);
       await _webrtcService.handleNewViewer(viewerSocketId);
-      // Advertise the video track in the WebRTC offer first. Then keep the
-      // camera muted until the viewer explicitly enables it.
+      // Keep the camera off until the viewer explicitly enables it.
       if (!_isCameraEnabled) {
         await _webrtcService.setCameraEnabled(false);
       }
