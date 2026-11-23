@@ -6,11 +6,13 @@ import '../services/webrtc_service.dart';
 class ViewerScreen extends StatefulWidget {
   final String roomId;
   final String serverUrl;
+  final String pin;
 
   const ViewerScreen({
     super.key,
     required this.roomId,
     required this.serverUrl,
+    required this.pin,
   });
 
   @override
@@ -25,6 +27,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
   bool _isCameraOnline = false;
   bool _isStreaming = false;
   bool _isMuted = false;
+  bool _isCameraEnabled = true;
 
   @override
   void initState() {
@@ -47,7 +50,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
       if (mounted) {
         setState(() => _isServerConnected = connected);
         if (connected) {
-          _signalingService.joinViewer(widget.roomId);
+          _signalingService.joinViewer(widget.roomId, widget.pin);
         }
       }
     };
@@ -83,6 +86,14 @@ class _ViewerScreenState extends State<ViewerScreen> {
         duration: const Duration(milliseconds: 1200),
         backgroundColor: const Color(0xFF1E293B),
       ),
+    );
+  }
+
+  void _setRemoteCameraEnabled(bool enabled) {
+    setState(() => _isCameraEnabled = enabled);
+    _signalingService.sendRemoteCommand('set_camera_enabled', enabled);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(enabled ? 'Camera turned ON remotely' : 'Camera turned OFF remotely')),
     );
   }
 
@@ -213,6 +224,11 @@ class _ViewerScreenState extends State<ViewerScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
+                      _ControlButton(
+                        icon: _isCameraEnabled ? Icons.videocam : Icons.videocam_off,
+                        label: _isCameraEnabled ? 'Camera Off' : 'Camera On',
+                        onTap: () => _setRemoteCameraEnabled(!_isCameraEnabled),
+                      ),
                       // Torch Toggle
                       _ControlButton(
                         icon: Icons.flash_on,

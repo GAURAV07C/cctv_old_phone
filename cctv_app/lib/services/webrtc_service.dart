@@ -17,6 +17,7 @@ class WebRTCService {
 
   bool isFrontCamera = false;
   bool isTorchOn = false;
+  bool isCameraEnabled = true;
 
   final Map<String, dynamic> _iceConfiguration = {
     'iceServers': [
@@ -46,6 +47,7 @@ class WebRTCService {
   // ================= CAMERA MODE METHODS =================
 
   Future<void> startLocalCamera() async {
+    if (localStream != null) return;
     // Battery-optimized constraints: 720p, 20fps
     final Map<String, dynamic> mediaConstraints = {
       'audio': true,
@@ -69,6 +71,16 @@ class WebRTCService {
     } catch (e) {
       debugPrint('[WebRTC] Camera start error: $e');
     }
+  }
+
+  Future<void> stopLocalCamera() async {
+    for (final track in localStream?.getTracks() ?? <MediaStreamTrack>[]) {
+      await track.stop();
+    }
+    await localStream?.dispose();
+    localStream = null;
+    localRenderer.srcObject = null;
+    isCameraEnabled = true;
   }
 
   Future<void> handleNewViewer(String viewerSocketId) async {
@@ -158,6 +170,15 @@ class WebRTCService {
           debugPrint('[WebRTC] Torch toggle handled: $e');
         }
       }
+    }
+  }
+
+  /// Turns the camera video track on/off without destroying the WebRTC peer
+  /// connections. This lets a viewer remotely pause/resume video instantly.
+  Future<void> setCameraEnabled(bool enabled) async {
+    isCameraEnabled = enabled;
+    for (final track in localStream?.getVideoTracks() ?? <MediaStreamTrack>[]) {
+      track.enabled = enabled;
     }
   }
 

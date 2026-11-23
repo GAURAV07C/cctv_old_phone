@@ -12,7 +12,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _roomIdController = TextEditingController(text: 'HOME-101');
-  final TextEditingController _serverUrlController = TextEditingController(text: 'http://192.168.1.15:3000');
+  final TextEditingController _serverUrlController = TextEditingController(text: 'http://192.168.1.7:3000');
+  final TextEditingController _pinController = TextEditingController(text: '123456');
 
   @override
   void initState() {
@@ -24,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     final savedRoom = prefs.getString('saved_room_id');
     final savedServer = prefs.getString('saved_server_url');
+    final savedPin = prefs.getString('saved_room_pin');
 
     if (savedRoom != null && savedRoom.isNotEmpty) {
       _roomIdController.text = savedRoom;
@@ -31,19 +33,22 @@ class _HomeScreenState extends State<HomeScreen> {
     if (savedServer != null && savedServer.isNotEmpty) {
       _serverUrlController.text = savedServer;
     }
+    if (savedPin != null && savedPin.isNotEmpty) _pinController.text = savedPin;
   }
 
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('saved_room_id', _roomIdController.text.trim().toUpperCase());
     await prefs.setString('saved_server_url', _serverUrlController.text.trim());
+    await prefs.setString('saved_room_pin', _pinController.text.trim());
   }
 
   void _openCameraMode() async {
     final roomId = _roomIdController.text.trim().toUpperCase();
     final serverUrl = _serverUrlController.text.trim();
+    final pin = _pinController.text.trim();
 
-    if (roomId.isEmpty || serverUrl.isEmpty) {
+    if (roomId.isEmpty || serverUrl.isEmpty || !RegExp(r'^\d{6}$').hasMatch(pin)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter Room ID and Server URL')),
       );
@@ -56,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CameraScreen(roomId: roomId, serverUrl: serverUrl),
+        builder: (_) => CameraScreen(roomId: roomId, serverUrl: serverUrl, pin: pin),
       ),
     );
   }
@@ -64,8 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openViewerMode() async {
     final roomId = _roomIdController.text.trim().toUpperCase();
     final serverUrl = _serverUrlController.text.trim();
+    final pin = _pinController.text.trim();
 
-    if (roomId.isEmpty || serverUrl.isEmpty) {
+    if (roomId.isEmpty || serverUrl.isEmpty || !RegExp(r'^\d{6}$').hasMatch(pin)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter Room ID and Server URL')),
       );
@@ -78,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ViewerScreen(roomId: roomId, serverUrl: serverUrl),
+        builder: (_) => ViewerScreen(roomId: roomId, serverUrl: serverUrl, pin: pin),
       ),
     );
   }
@@ -178,6 +184,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Text(
                     'CAMERA ROOM ID / PIN',
                     style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _pinController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    obscureText: true,
+                    style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 4),
+                    decoration: InputDecoration(
+                      counterText: '', filled: true, fillColor: const Color(0xFF0F172A),
+                      prefixIcon: const Icon(Icons.lock, color: Colors.orangeAccent),
+                      hintText: '6-digit PIN', hintStyle: const TextStyle(color: Colors.white24),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(

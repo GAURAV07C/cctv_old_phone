@@ -286,6 +286,7 @@
   <div class="main-card">
     <div class="join-bar">
       <input type="text" id="roomIdInput" placeholder="CAMERA ROOM ID (e.g. HOME-101)" value="HOME-101" />
+      <input type="password" id="pinInput" placeholder="6-digit PIN" value="123456" maxlength="6" inputmode="numeric" />
       <button class="btn btn-primary" id="connectBtn" onclick="connectToCamera()">
         <span>Connect Live</span>
       </button>
@@ -378,7 +379,9 @@
 
     function connectToCamera() {
       const roomId = document.getElementById('roomIdInput').value.trim().toUpperCase();
+      const pin = document.getElementById('pinInput').value.trim();
       if (!roomId) return alert('Please enter Camera Room ID');
+      if (!/^\d{6}$/.test(pin)) return alert('Please enter the 6-digit PIN');
       currentRoomId = roomId;
 
       // Prime video element for autoplay under user gesture
@@ -406,7 +409,8 @@
         document.getElementById('diagWs').innerText = 'Connected';
         ws.send(JSON.stringify({
           type: 'join_viewer',
-          roomId: currentRoomId
+          roomId: currentRoomId,
+          pin: pin
         }));
       };
 
@@ -432,7 +436,7 @@
             if (msg.online) {
               updateStatus('warning', 'Camera Connected');
               document.getElementById('diagCam').innerText = 'Online';
-              ws.send(JSON.stringify({ type: 'join_viewer', roomId: currentRoomId }));
+              ws.send(JSON.stringify({ type: 'join_viewer', roomId: currentRoomId, pin: document.getElementById('pinInput').value.trim() }));
             } else {
               updateStatus('', 'Camera went offline');
               document.getElementById('diagCam').innerText = 'Offline';
@@ -446,6 +450,13 @@
           case 'offer': {
             console.log('[Offer Received from Camera]', msg.senderSocketId);
             await handleOffer(msg.sdp, msg.senderSocketId);
+            break;
+          }
+
+          case 'auth_failed': {
+            updateStatus('', 'Invalid Room PIN');
+            document.getElementById('diagCam').innerText = 'PIN rejected';
+            document.getElementById('placeholderText').innerText = 'Invalid PIN. Check the camera PIN and try again.';
             break;
           }
 

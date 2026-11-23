@@ -10,11 +10,13 @@ import '../services/webrtc_service.dart';
 class CameraScreen extends StatefulWidget {
   final String roomId;
   final String serverUrl;
+  final String pin;
 
   const CameraScreen({
     super.key,
     required this.roomId,
     required this.serverUrl,
+    required this.pin,
   });
 
   @override
@@ -28,8 +30,11 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isConnected = false;
   int _activeViewers = 0;
   bool _isStealthMode = false;
+  bool _isCameraEnabled = true;
+  Future<void>? _cameraStartFuture;
   String _currentTime = '';
   Timer? _clockTimer;
+  static const MethodChannel _serviceChannel = MethodChannel('com.cctv/foreground_service');
 
   @override
   void initState() {
@@ -41,17 +46,27 @@ class _CameraScreenState extends State<CameraScreen> {
     // Keep device awake while camera is operating
     await WakelockPlus.enable();
 
-    // Request permissions
-    await [Permission.camera, Permission.microphone].request();
+    // Request permissions (Camera, Mic, Notification, Ignore Battery Optimizations)
+    await [
+      Permission.camera,
+      Permission.microphone,
+      Permission.notification,
+      Permission.ignoreBatteryOptimizations,
+    ].request();
+
+    // Start Native Android Foreground Service (Survives Recent Apps Swipe)
+    try {
+      await _serviceChannel.invokeMethod('startService', {'roomId': widget.roomId});
+    } catch (e) {
+      debugPrint('[Service] Start error: $e');
+    }
 
     _signalingService = SignalingService(serverUrl: widget.serverUrl);
     _webrtcService = WebRTCService(signalingService: _signalingService);
 
     await _webrtcService.initRenderers();
-    await _webrtcService.startLocalCamera();
-
     _setupSignalingCallbacks();
-    _signalingService.connect();
+    await _signalingService.connect();
 
     _startClock();
   }
@@ -75,12 +90,18 @@ class _CameraScreenState extends State<CameraScreen> {
       if (mounted) {
         setState(() => _isConnected = connected);
         if (connected) {
-          _signalingService.registerCamera(widget.roomId);
+          _signalingService.registerCamera(widget.roomId, widget.pin);
         }
       }
     };
 
     _signalingService.onNewViewer = (viewerSocketId) async {
+      // Demand-based battery optimization: capture only while a viewer exists.
+      if (_webrtcService.localStream == null) {
+        _cameraStartFuture ??= _webrtcService.startLocalCamera();
+        await _cameraStartFuture;
+        _cameraStartFuture = null;
+      }
       if (mounted) {
         setState(() => _activeViewers++);
       }
@@ -92,6 +113,9 @@ class _CameraScreenState extends State<CameraScreen> {
         setState(() => _activeViewers = (_activeViewers > 0) ? _activeViewers - 1 : 0);
       }
       _webrtcService.removeViewer(viewerSocketId);
+      if (_activeViewers == 0) {
+        _webrtcService.stopLocalCamera();
+      }
     };
 
     _signalingService.onAnswer = (sdp, viewerSocketId) {
@@ -108,6 +132,10 @@ class _CameraScreenState extends State<CameraScreen> {
         _webrtcService.toggleTorch();
       } else if (command == 'switch_camera') {
         _webrtcService.switchCamera();
+      } else if (command == 'set_camera_enabled') {
+        final enabled = value != false;
+        _webrtcService.setCameraEnabled(enabled);
+        if (mounted) setState(() => _isCameraEnabled = enabled);
       }
     };
   }
@@ -130,13 +158,48 @@ class _CameraScreenState extends State<CameraScreen> {
     WakelockPlus.disable();
     _webrtcService.dispose();
     _signalingService.disconnect();
+    try {
+      _serviceChannel.invokeMethod('stopService');
+    } catch (_) {}
     super.dispose();
+  }
+
+  void _showExitDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('CCTV Camera Active', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Do you want to keep streaming in the background or stop the camera completely?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).pop(); // Actually pop and trigger dispose()
+            },
+            child: const Text('Stop & Exit', style: TextStyle(color: Colors.redAccent)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _serviceChannel.invokeMethod('moveToBackground');
+            },
+            child: const Text('Stream in Background', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    Widget content;
     if (_isStealthMode) {
-      return GestureDetector(
+      content = GestureDetector(
         onDoubleTap: _toggleStealthMode,
         child: Scaffold(
           backgroundColor: Colors.black,
@@ -166,53 +229,69 @@ class _CameraScreenState extends State<CameraScreen> {
           ),
         ),
       );
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'CCTV Camera Mode',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+    } else {
+      content = Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF1E293B),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: _showExitDialog,
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'CCTV Camera Mode',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isConnected ? Colors.greenAccent : Colors.redAccent,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _isConnected ? 'Online: Room ${widget.roomId}' : 'Connecting...',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    _isConnected ? 'Online: Room ${widget.roomId}' : 'Connecting...',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Minimize / Run in Background',
+              icon: const Icon(Icons.download_for_offline_outlined, color: Colors.lightBlueAccent),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Streaming in background. Tap notification anytime to return!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                _serviceChannel.invokeMethod('moveToBackground');
+              },
+            ),
+            IconButton(
+              tooltip: 'Switch Camera',
+              icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
+              onPressed: () => _webrtcService.switchCamera(),
+            ),
+            IconButton(
+              tooltip: 'Toggle Torch',
+              icon: const Icon(Icons.flash_on, color: Colors.white),
+              onPressed: () => _webrtcService.toggleTorch(),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Switch Camera',
-            icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
-            onPressed: () => _webrtcService.switchCamera(),
-          ),
-          IconButton(
-            tooltip: 'Toggle Torch',
-            icon: const Icon(Icons.flash_on, color: Colors.white),
-            onPressed: () => _webrtcService.toggleTorch(),
-          ),
-        ],
-      ),
-      body: Column(
+        body: Column(
         children: [
           // Live Camera Preview
           Expanded(
@@ -255,8 +334,8 @@ class _CameraScreenState extends State<CameraScreen> {
                       color: Colors.red.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
-                      'REC / LIVE',
+                        child: Text(
+                          _isCameraEnabled ? 'REC / LIVE' : 'CAMERA PAUSED',
                       style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1),
                     ),
                   ),
@@ -317,9 +396,9 @@ class _CameraScreenState extends State<CameraScreen> {
                         backgroundColor: const Color(0xFF2563EB),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.visibility_off, color: Colors.white),
-                      label: const Text(
-                        'Turn Screen OFF (Stealth Mode)',
+                      icon: Icon(_isCameraEnabled ? Icons.visibility_off : Icons.visibility, color: Colors.white),
+                      label: Text(
+                        _isCameraEnabled ? 'Turn Screen OFF (Stealth Mode)' : 'Camera paused remotely',
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       onPressed: _toggleStealthMode,
@@ -337,6 +416,17 @@ class _CameraScreenState extends State<CameraScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _showExitDialog();
+        }
+      },
+      child: content,
     );
   }
 }

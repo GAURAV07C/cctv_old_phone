@@ -117,12 +117,12 @@ class SignalingService {
     }
   }
 
-  void registerCamera(String roomId) {
-    _send({'type': 'register_camera', 'roomId': roomId});
+  void registerCamera(String roomId, String pin) {
+    _send({'type': 'register_camera', 'roomId': roomId, 'pin': pin});
   }
 
-  void joinViewer(String roomId) {
-    _send({'type': 'join_viewer', 'roomId': roomId});
+  void joinViewer(String roomId, String pin) {
+    _send({'type': 'join_viewer', 'roomId': roomId, 'pin': pin});
   }
 
   void sendOffer(String targetSocketId, dynamic sdp) {

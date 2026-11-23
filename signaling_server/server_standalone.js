@@ -175,7 +175,7 @@ server.on('upgrade', (req, socket) => {
 
 // Routing & Signaling Logic
 function handleClientMessage(client, msg) {
-  const { type, roomId, targetSocketId, sdp, candidate, command, value } = msg;
+  const { type, roomId, pin, targetSocketId, sdp, candidate, command, value } = msg;
   const cleanRoomId = (roomId || client.roomId || '').toUpperCase().trim();
 
   switch (type) {
@@ -184,9 +184,10 @@ function handleClientMessage(client, msg) {
       client.roomId = cleanRoomId;
 
       if (!rooms.has(cleanRoomId)) {
-        rooms.set(cleanRoomId, { camera: client, viewers: new Map() });
+        rooms.set(cleanRoomId, { camera: client, pin: String(pin || ''), viewers: new Map() });
       } else {
         rooms.get(cleanRoomId).camera = client;
+        rooms.get(cleanRoomId).pin = String(pin || '');
       }
 
       console.log(`[Camera Registered] Room: ${cleanRoomId}, Client: ${client.id}`);
@@ -206,9 +207,13 @@ function handleClientMessage(client, msg) {
       client.roomId = cleanRoomId;
 
       if (!rooms.has(cleanRoomId)) {
-        rooms.set(cleanRoomId, { camera: null, viewers: new Map() });
+        rooms.set(cleanRoomId, { camera: null, pin: null, viewers: new Map() });
       }
       const room = rooms.get(cleanRoomId);
+      if (!room.pin || String(pin || '') !== room.pin) {
+        client.send({ type: 'auth_failed', reason: 'Invalid room PIN' });
+        return;
+      }
       room.viewers.set(client.id, client);
 
       const isCameraOnline = room.camera !== null;
