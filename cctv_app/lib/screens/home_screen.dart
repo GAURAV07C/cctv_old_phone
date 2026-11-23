@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'camera_screen.dart';
@@ -16,11 +19,10 @@ class _HomeScreenState extends State<HomeScreen> {
     text: 'HOME-101',
   );
   final TextEditingController _serverUrlController = TextEditingController(
-    text: 'http://192.168.1.7:3001',
+    text: 'https://smart-cctv-signaling.onrender.com',
   );
-  final TextEditingController _pinController = TextEditingController(
-    text: '123456',
-  );
+  final TextEditingController _pinController = TextEditingController();
+  bool _obscurePin = true;
 
   @override
   void initState() {
@@ -38,9 +40,27 @@ class _HomeScreenState extends State<HomeScreen> {
       _roomIdController.text = savedRoom;
     }
     if (savedServer != null && savedServer.isNotEmpty) {
-      _serverUrlController.text = savedServer;
+      // Migrate older local-server settings to the deployed production server.
+      _serverUrlController.text =
+          savedServer.startsWith('http://192.') ||
+              savedServer.startsWith('http://10.') ||
+              savedServer.startsWith('http://localhost')
+          ? 'https://smart-cctv-signaling.onrender.com'
+          : savedServer;
     }
-    if (savedPin != null && savedPin.isNotEmpty) _pinController.text = savedPin;
+    if (savedPin != null && RegExp(r'^\d{6}$').hasMatch(savedPin)) {
+      _pinController.text = savedPin;
+    } else {
+      await _generateAndSavePin();
+    }
+  }
+
+  Future<void> _generateAndSavePin() async {
+    final pin = (100000 + Random.secure().nextInt(900000)).toString();
+    _pinController.text = pin;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_room_pin', pin);
+    if (mounted) setState(() {});
   }
 
   Future<void> _saveSettings() async {
@@ -112,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         title: const Text(
-          'Signaling Server Settings',
+          'Connection settings',
           style: TextStyle(color: Colors.white),
         ),
         content: Column(
@@ -120,42 +140,33 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter the Signaling Server URL (Local IP or Cloud URL):',
+              'Secure cloud connection is configured for this device.',
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _serverUrlController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFF0F172A),
-                hintText: 'e.g. http://192.168.1.5:3000',
-                hintStyle: const TextStyle(color: Colors.white38),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.cloud_done, color: Colors.greenAccent, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    'Cloud server connected',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
               ),
             ),
           ],
         ),
         actions: [
           TextButton(
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white54),
-            ),
+            child: const Text('Done', style: TextStyle(color: Colors.white)),
             onPressed: () => Navigator.pop(ctx),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-            ),
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              _saveSettings();
-              Navigator.pop(ctx);
-            },
           ),
         ],
       ),
@@ -171,9 +182,12 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         title: const Row(
           children: [
-            Text('📹 ', style: TextStyle(fontSize: 22)),
             Text(
-              'Smart CCTV',
+              '◉ ',
+              style: TextStyle(fontSize: 22, color: Color(0xFF60A5FA)),
+            ),
+            Text(
+              'SecureCam',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -195,10 +209,46 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Turn your old phone into a secure, low-latency CCTV camera.',
-              style: TextStyle(color: Colors.white60, fontSize: 15),
+              'Your private live camera workspace',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 8),
+            const Text(
+              'Connect a camera device and view it securely from anywhere.',
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF102A43),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF1D4E89)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.lock_outline, color: Color(0xFF60A5FA), size: 19),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Private room connection • Live video stays peer-to-peer',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
 
             // Room ID Input Card
             Container(
@@ -212,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'CAMERA ROOM ID / PIN',
+                    'CONNECTION DETAILS',
                     style: TextStyle(
                       color: Colors.white54,
                       fontSize: 12,
@@ -225,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     controller: _pinController,
                     keyboardType: TextInputType.number,
                     maxLength: 6,
-                    obscureText: true,
+                    obscureText: _obscurePin,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -241,6 +291,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       hintText: '6-digit PIN',
                       hintStyle: const TextStyle(color: Colors.white24),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Show or hide PIN',
+                            icon: Icon(
+                              _obscurePin
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.white54,
+                            ),
+                            onPressed: () {
+                              setState(() => _obscurePin = !_obscurePin);
+                            },
+                          ),
+                          IconButton(
+                            tooltip: 'Copy PIN',
+                            icon: const Icon(Icons.copy, color: Colors.white54),
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(text: _pinController.text),
+                              );
+                            },
+                          ),
+                          IconButton(
+                            tooltip: 'Generate new PIN',
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: Colors.white54,
+                            ),
+                            onPressed: _generateAndSavePin,
+                          ),
+                        ],
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -274,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Both Camera and Viewer must use this same ID to connect.',
+                    'Use the same room and access PIN on both devices.',
                     style: TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                 ],
@@ -285,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Mode Selection
             const Text(
-              'Select Device Role',
+              'Choose how you want to use this device',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -294,14 +378,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 14),
 
-            // Option 1: Old Phone (Camera Mode)
             _RoleCard(
-              title: 'Camera Mode',
-              subtitle: 'Select this on your OLD phone.\nIncludes Screen-Off Stealth Mode & Battery Saver.',
-              badge: 'OLD PHONE',
+              title: 'Camera device',
+              subtitle: 'Use this device as a live camera source. You can control the stream from a viewer.',
+              badge: 'BROADCAST',
               badgeColor: Colors.blueAccent,
               icon: Icons.videocam,
-              buttonText: 'Start as Camera',
+              buttonText: 'Start camera device',
               buttonColor: const Color(0xFF2563EB),
               onTap: _openCameraMode,
             ),
@@ -309,12 +392,12 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 14),
 
             _RoleCard(
-              title: 'Viewer Mode',
-              subtitle: 'Select this on your MAIN phone or laptop phone.\nJoin an existing camera and control it remotely.',
-              badge: 'MAIN DEVICE',
+              title: 'Live viewer',
+              subtitle: 'Join an active camera, watch the live feed and use remote controls.',
+              badge: 'MONITOR',
               badgeColor: Colors.greenAccent,
               icon: Icons.visibility,
-              buttonText: '＋ Join as Viewer',
+              buttonText: '＋ Join live camera',
               buttonColor: const Color(0xFF059669),
               onTap: _openViewerMode,
             ),

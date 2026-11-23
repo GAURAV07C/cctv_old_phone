@@ -80,7 +80,6 @@ class _CameraScreenState extends State<CameraScreen> {
     // Start the local preview as soon as Camera Mode is ready. This also
     // guarantees that tracks exist before a viewer's offer is created.
     await _webrtcService.startLocalCamera();
-    await _webrtcService.setCameraEnabled(false);
     _setupSignalingCallbacks();
     await _signalingService.connect();
 
@@ -167,6 +166,11 @@ class _CameraScreenState extends State<CameraScreen> {
         '$_activeViewers viewer connected',
       );
       await _webrtcService.handleNewViewer(viewerSocketId);
+      // Advertise the video track in the WebRTC offer first. Then keep the
+      // camera muted until the viewer explicitly enables it.
+      if (!_isCameraEnabled) {
+        await _webrtcService.setCameraEnabled(false);
+      }
     };
 
     _signalingService.onViewerLeft = (viewerSocketId) {
