@@ -313,7 +313,7 @@
       <div class="control-group">
         <button class="btn btn-secondary" onclick="sendRemoteCommand('toggle_flash')">🔦 Flashlight</button>
         <button class="btn btn-secondary" onclick="sendRemoteCommand('switch_camera')">🔄 Switch Cam</button>
-        <button class="btn btn-secondary" onclick="toggleRemoteCamera()" id="cameraToggleBtn">📹 Camera Off</button>
+        <button class="btn btn-secondary" onclick="toggleRemoteCamera()" id="cameraToggleBtn">📹 Camera On</button>
       </div>
     </div>
   </div>
@@ -334,7 +334,7 @@
     let peerConnection = null;
     let currentRoomId = '';
     let incomingMediaStream = null;
-    let remoteCameraEnabled = true;
+    let remoteCameraEnabled = false;
 
     const iceConfig = {
       iceServers: [

@@ -76,6 +76,29 @@ Network URL: http://<Aapka-Laptop-IP>:3000
 
 > **Tip (Anywhere Access 24/7):** Agar aap ghar se bahar se bhi bina laptop on rakhe stream dekhna chahte hain, toh is `signaling_server` folder ko [Render.com](https://render.com) ya [Railway.app](https://railway.app) par free me deploy kar sakte hain. Wahan se aapko ek permanent URL mil jayega (e.g. `https://my-cctv.onrender.com`).
 
+### Render par deploy karna
+
+Project ko GitHub par push karke Render me **New + → Blueprint** select karein aur repository connect karein. Root me diya hua `render.yaml` automatically `signaling_server` ko Node web service ke roop me deploy karega.
+
+Manual setup ke liye:
+
+```text
+Root Directory: signaling_server
+Build Command: npm install
+Start Command: npm start
+Environment: Node
+```
+
+Deploy ke baad Render ka HTTPS URL copy karein, jaise:
+
+```text
+https://smart-cctv-signaling.onrender.com
+```
+
+Isi URL ko Flutter app ke Server URL field me use karein. App automatically HTTPS ko secure WebSocket (`wss://`) me convert karegi. Browser viewer bhi isi URL par open hoga.
+
+> Note: Render free service idle hone par sleep kar sakti hai. Pehli connection par cold-start delay aa sakta hai. Current room state memory me hai, isliye server restart/sleep ke baad camera aur viewer ko reconnect karna padega.
+
 ---
 
 ### Step 2: Purane Phone Par App Chalayein (Camera Mode)

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'camera_screen.dart';
+import 'viewer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,9 +12,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _roomIdController = TextEditingController(text: 'HOME-101');
-  final TextEditingController _serverUrlController = TextEditingController(text: 'http://192.168.1.7:3001');
-  final TextEditingController _pinController = TextEditingController(text: '123456');
+  final TextEditingController _roomIdController = TextEditingController(
+    text: 'HOME-101',
+  );
+  final TextEditingController _serverUrlController = TextEditingController(
+    text: 'http://192.168.1.7:3001',
+  );
+  final TextEditingController _pinController = TextEditingController(
+    text: '123456',
+  );
 
   @override
   void initState() {
@@ -37,7 +45,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_room_id', _roomIdController.text.trim().toUpperCase());
+    await prefs.setString(
+      'saved_room_id',
+      _roomIdController.text.trim().toUpperCase(),
+    );
     await prefs.setString('saved_server_url', _serverUrlController.text.trim());
     await prefs.setString('saved_room_pin', _pinController.text.trim());
   }
@@ -47,7 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final serverUrl = _serverUrlController.text.trim();
     final pin = _pinController.text.trim();
 
-    if (roomId.isEmpty || serverUrl.isEmpty || !RegExp(r'^\d{6}$').hasMatch(pin)) {
+    if (roomId.isEmpty ||
+        serverUrl.isEmpty ||
+        !RegExp(r'^\d{6}$').hasMatch(pin)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter Room ID and Server URL')),
       );
@@ -60,7 +73,35 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CameraScreen(roomId: roomId, serverUrl: serverUrl, pin: pin),
+        builder: (_) =>
+            CameraScreen(roomId: roomId, serverUrl: serverUrl, pin: pin),
+      ),
+    );
+  }
+
+  void _openViewerMode() async {
+    final roomId = _roomIdController.text.trim().toUpperCase();
+    final serverUrl = _serverUrlController.text.trim();
+    final pin = _pinController.text.trim();
+
+    if (roomId.isEmpty ||
+        serverUrl.isEmpty ||
+        !RegExp(r'^\d{6}$').hasMatch(pin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter Room ID, Server URL and 6-digit PIN'),
+        ),
+      );
+      return;
+    }
+
+    await _saveSettings();
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ViewerScreen(roomId: roomId, serverUrl: serverUrl, pin: pin),
       ),
     );
   }
@@ -70,7 +111,10 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Signaling Server Settings', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Signaling Server Settings',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,18 +132,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 fillColor: const Color(0xFF0F172A),
                 hintText: 'e.g. http://192.168.1.5:3000',
                 hintStyle: const TextStyle(color: Colors.white38),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white54),
+            ),
             onPressed: () => Navigator.pop(ctx),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+            ),
             child: const Text('Save', style: TextStyle(color: Colors.white)),
             onPressed: () {
               _saveSettings();
@@ -123,7 +174,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('📹 ', style: TextStyle(fontSize: 22)),
             Text(
               'Smart CCTV',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ],
         ),
@@ -159,7 +213,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const Text(
                     'CAMERA ROOM ID / PIN',
-                    style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -167,23 +226,44 @@ class _HomeScreenState extends State<HomeScreen> {
                     keyboardType: TextInputType.number,
                     maxLength: 6,
                     obscureText: true,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 4),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      letterSpacing: 4,
+                    ),
                     decoration: InputDecoration(
-                      counterText: '', filled: true, fillColor: const Color(0xFF0F172A),
-                      prefixIcon: const Icon(Icons.lock, color: Colors.orangeAccent),
-                      hintText: '6-digit PIN', hintStyle: const TextStyle(color: Colors.white24),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      counterText: '',
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      prefixIcon: const Icon(
+                        Icons.lock,
+                        color: Colors.orangeAccent,
+                      ),
+                      hintText: '6-digit PIN',
+                      hintStyle: const TextStyle(color: Colors.white24),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _roomIdController,
                     textCapitalization: TextCapitalization.characters,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: const Color(0xFF0F172A),
-                      prefixIcon: const Icon(Icons.tag, color: Colors.blueAccent),
+                      prefixIcon: const Icon(
+                        Icons.tag,
+                        color: Colors.blueAccent,
+                      ),
                       hintText: 'HOME-101',
                       hintStyle: const TextStyle(color: Colors.white24),
                       border: OutlineInputBorder(
@@ -206,7 +286,11 @@ class _HomeScreenState extends State<HomeScreen> {
             // Mode Selection
             const Text(
               'Select Device Role',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -222,6 +306,18 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: _openCameraMode,
             ),
 
+            const SizedBox(height: 14),
+
+            _RoleCard(
+              title: 'Viewer Mode',
+              subtitle: 'Select this on your MAIN phone or laptop phone.\nJoin an existing camera and control it remotely.',
+              badge: 'MAIN DEVICE',
+              badgeColor: Colors.greenAccent,
+              icon: Icons.visibility,
+              buttonText: '＋ Join as Viewer',
+              buttonColor: const Color(0xFF059669),
+              onTap: _openViewerMode,
+            ),
           ],
         ),
       ),
@@ -271,7 +367,11 @@ class _RoleCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Text(
                     title,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -284,7 +384,11 @@ class _RoleCard extends StatelessWidget {
                 ),
                 child: Text(
                   badge,
-                  style: TextStyle(color: badgeColor, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -292,7 +396,11 @@ class _RoleCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             subtitle,
-            style: const TextStyle(color: Colors.white60, fontSize: 13, height: 1.4),
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 13,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -301,12 +409,18 @@ class _RoleCard extends StatelessWidget {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: buttonColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: onTap,
               child: Text(
                 buttonText,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),

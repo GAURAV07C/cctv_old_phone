@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+
 import '../services/signaling_service.dart';
 import '../services/webrtc_service.dart';
 import '../services/notification_service.dart';
@@ -28,7 +29,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
   bool _isCameraOnline = false;
   bool _isStreaming = false;
   bool _isMuted = false;
-  bool _isCameraEnabled = true;
+  bool _isCameraEnabled = false;
 
   @override
   void initState() {
@@ -50,7 +51,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _signalingService.onConnectionChange = (connected) {
       if (mounted) {
         setState(() => _isServerConnected = connected);
-        NotificationService.instance.showStatus('CCTV connection', connected ? 'Connected to server' : 'Disconnected; reconnecting');
+        NotificationService.instance.showStatus(
+          'CCTV connection',
+          connected ? 'Connected to server' : 'Disconnected; reconnecting',
+        );
         if (connected) {
           _signalingService.joinViewer(widget.roomId, widget.pin);
         }
@@ -65,7 +69,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
             _isStreaming = false;
           }
         });
-        NotificationService.instance.showStatus('Camera status', online ? 'Camera is online' : 'Camera went offline');
+        NotificationService.instance.showStatus(
+          'Camera status',
+          online ? 'Camera is online' : 'Camera went offline',
+        );
       }
     };
 
@@ -74,7 +81,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
       if (mounted) {
         setState(() => _isStreaming = true);
       }
-      NotificationService.instance.showStatus('Stream started', 'Live camera stream is active');
+      NotificationService.instance.showStatus(
+        'Stream started',
+        'Live camera stream is active',
+      );
     };
 
     _signalingService.onIceCandidate = (candidate, cameraSocketId) {
@@ -93,7 +103,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   @override
   void dispose() {
-    NotificationService.instance.showStatus('Stream stopped', 'Viewer session ended');
+    NotificationService.instance.showStatus(
+      'Stream stopped',
+      'Viewer session ended',
+    );
     _webrtcService.dispose();
     _signalingService.disconnect();
     super.dispose();
@@ -111,7 +124,11 @@ class _ViewerScreenState extends State<ViewerScreen> {
           children: [
             Text(
               'Viewing: ${widget.roomId}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             Row(
               children: [
@@ -120,7 +137,11 @@ class _ViewerScreenState extends State<ViewerScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _isStreaming ? Colors.greenAccent : (_isCameraOnline ? Colors.amberAccent : Colors.redAccent),
+                    color: _isStreaming
+                        ? Colors.greenAccent
+                        : (_isCameraOnline
+                              ? Colors.amberAccent
+                              : Colors.redAccent),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -128,8 +149,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
                   !_isServerConnected
                       ? 'Connecting to Server...'
                       : (_isStreaming
-                          ? 'Live Stream Active'
-                          : (_isCameraOnline ? 'Camera Online (Connecting...)' : 'Camera Offline')),
+                            ? 'Live Stream Active'
+                            : (_isCameraOnline
+                                  ? 'Camera Online (Connecting...)'
+                                  : 'Camera Offline')),
                   style: const TextStyle(fontSize: 12, color: Colors.white70),
                 ),
               ],
@@ -149,14 +172,17 @@ class _ViewerScreenState extends State<ViewerScreen> {
                   child: _isStreaming
                       ? RTCVideoView(
                           _webrtcService.remoteRenderer,
-                          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+                          objectFit: RTCVideoViewObjectFit
+                              .RTCVideoViewObjectFitContain,
                         )
                       : Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                _isCameraOnline ? Icons.sync : Icons.videocam_off,
+                                _isCameraOnline
+                                    ? Icons.sync
+                                    : Icons.videocam_off,
                                 size: 56,
                                 color: Colors.white30,
                               ),
@@ -166,7 +192,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
                                     ? 'Requesting video feed from camera...'
                                     : 'Camera is currently offline.\nMake sure the app is open on your old phone.',
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white60, fontSize: 14),
+                                style: const TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 14,
+                                ),
                               ),
                             ],
                           ),
@@ -179,18 +208,29 @@ class _ViewerScreenState extends State<ViewerScreen> {
                     top: 16,
                     left: 16,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.fiber_manual_record, color: Colors.white, size: 12),
+                          Icon(
+                            Icons.fiber_manual_record,
+                            color: Colors.white,
+                            size: 12,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             'LIVE P2P',
-                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -213,14 +253,20 @@ class _ViewerScreenState extends State<ViewerScreen> {
                 children: [
                   const Text(
                     'Remote Camera Controls',
-                    style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _ControlButton(
-                        icon: _isCameraEnabled ? Icons.videocam : Icons.videocam_off,
+                        icon: _isCameraEnabled
+                            ? Icons.videocam
+                            : Icons.videocam_off,
                         label: _isCameraEnabled ? 'Camera Off' : 'Camera On',
                         onTap: () => _setRemoteCameraEnabled(!_isCameraEnabled),
                       ),
@@ -287,7 +333,11 @@ class _ControlButton extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
