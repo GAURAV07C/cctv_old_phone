@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'camera_screen.dart';
-import 'viewer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -62,29 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => CameraScreen(roomId: roomId, serverUrl: serverUrl, pin: pin),
-      ),
-    );
-  }
-
-  void _openViewerMode() async {
-    final roomId = _roomIdController.text.trim().toUpperCase();
-    final serverUrl = _serverUrlController.text.trim();
-    final pin = _pinController.text.trim();
-
-    if (roomId.isEmpty || serverUrl.isEmpty || !RegExp(r'^\d{6}$').hasMatch(pin)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter Room ID and Server URL')),
-      );
-      return;
-    }
-
-    await _saveSettings();
-    if (!mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ViewerScreen(roomId: roomId, serverUrl: serverUrl, pin: pin),
       ),
     );
   }
@@ -246,19 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: _openCameraMode,
             ),
 
-            const SizedBox(height: 16),
-
-            // Option 2: New Phone / Laptop (Viewer Mode)
-            _RoleCard(
-              title: 'Viewer Mode',
-              subtitle: 'Select this to WATCH the live camera feed anywhere in the world with remote controls.',
-              badge: 'WATCH ANYWHERE',
-              badgeColor: Colors.greenAccent,
-              icon: Icons.monitor,
-              buttonText: 'Watch Feed',
-              buttonColor: const Color(0xFF059669),
-              onTap: _openViewerMode,
-            ),
           ],
         ),
       ),

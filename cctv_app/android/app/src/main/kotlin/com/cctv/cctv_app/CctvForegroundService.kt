@@ -48,7 +48,7 @@ class CctvForegroundService : Service() {
             wakeLock?.acquire(24 * 60 * 60 * 1000L)
         }
 
-        startInForeground(currentRoomId, "CCTV Camera is live & streaming. Room: $currentRoomId")
+        startInForeground(currentRoomId, "Background service active")
         return START_STICKY
     }
 
@@ -56,7 +56,7 @@ class CctvForegroundService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         // DO NOT stop the service! Keep streaming in background via notification
-        startInForeground(currentRoomId, "Protected & Streaming in background. Room: $currentRoomId")
+        startInForeground(currentRoomId, "Background service active")
 
         // Schedule respawn safeguard if system tries to terminate process
         try {
@@ -95,7 +95,7 @@ class CctvForegroundService : Service() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("📹 Smart CCTV Live")
+            .setContentTitle("Background service active")
             .setContentText(statusText)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
@@ -135,7 +135,7 @@ class CctvForegroundService : Service() {
                 "Smart CCTV Live Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Keeps CCTV camera running in background"
+                description = "Required background camera service"
                 setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)

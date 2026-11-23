@@ -50,13 +50,6 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _signalingService.onConnectionChange = (connected) {
       if (mounted) {
         setState(() => _isServerConnected = connected);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(connected ? 'Connected to CCTV server' : 'Server disconnected; reconnecting...'),
-            backgroundColor: connected ? Colors.green.shade700 : Colors.orange.shade800,
-            duration: const Duration(seconds: 2),
-          ),
-        );
         NotificationService.instance.showStatus('CCTV connection', connected ? 'Connected to server' : 'Disconnected; reconnecting');
         if (connected) {
           _signalingService.joinViewer(widget.roomId, widget.pin);
@@ -72,13 +65,6 @@ class _ViewerScreenState extends State<ViewerScreen> {
             _isStreaming = false;
           }
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(online ? 'Camera is online' : 'Camera went offline'),
-            backgroundColor: online ? Colors.green.shade700 : Colors.red.shade700,
-            duration: const Duration(seconds: 2),
-          ),
-        );
         NotificationService.instance.showStatus('Camera status', online ? 'Camera is online' : 'Camera went offline');
       }
     };
@@ -98,21 +84,11 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   void _sendRemoteCmd(String command) {
     _signalingService.sendRemoteCommand(command, true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Command sent: $command'),
-        duration: const Duration(milliseconds: 1200),
-        backgroundColor: const Color(0xFF1E293B),
-      ),
-    );
   }
 
   void _setRemoteCameraEnabled(bool enabled) {
     setState(() => _isCameraEnabled = enabled);
     _signalingService.sendRemoteCommand('set_camera_enabled', enabled);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(enabled ? 'Camera turned ON remotely' : 'Camera turned OFF remotely')),
-    );
   }
 
   @override

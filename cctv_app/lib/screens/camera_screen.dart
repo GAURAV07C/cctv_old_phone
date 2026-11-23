@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:battery_plus/battery_plus.dart';
 import '../services/signaling_service.dart';
 import '../services/webrtc_service.dart';
 import '../services/notification_service.dart';
@@ -36,6 +37,9 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void>? _cameraStartFuture;
   String _currentTime = '';
   Timer? _clockTimer;
+  Timer? _statusTimer;
+  int _batteryLevel = -1;
+  BatteryState _batteryState = BatteryState.unknown;
   static const MethodChannel _serviceChannel = MethodChannel('com.cctv/foreground_service');
 
   @override
@@ -71,6 +75,24 @@ class _CameraScreenState extends State<CameraScreen> {
     await _signalingService.connect();
 
     _startClock();
+    _startDeviceStatusMonitor();
+  }
+
+  void _startDeviceStatusMonitor() {
+    final battery = Battery();
+    Future<void> update() async {
+      try {
+        final level = await battery.batteryLevel;
+        final state = await battery.batteryState;
+        if (!mounted) return;
+        setState(() { _batteryLevel = level; _batteryState = state; });
+        if (level <= 15 && state != BatteryState.charging) {
+          NotificationService.instance.showStatus('Low battery', 'Camera phone battery is $level%');
+        }
+      } catch (_) {}
+    }
+    update();
+    _statusTimer = Timer.periodic(const Duration(minutes: 5), (_) => update());
   }
 
   void _startClock() {
@@ -91,13 +113,6 @@ class _CameraScreenState extends State<CameraScreen> {
     _signalingService.onConnectionChange = (connected) {
       if (mounted) {
         setState(() => _isConnected = connected);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(connected ? 'CCTV server connected' : 'Server disconnected; reconnecting...'),
-            backgroundColor: connected ? Colors.green.shade700 : Colors.orange.shade800,
-            duration: const Duration(seconds: 2),
-          ),
-        );
         NotificationService.instance.showStatus('CCTV server', connected ? 'Camera connected' : 'Disconnected; reconnecting');
         if (connected) {
           _signalingService.registerCamera(widget.roomId, widget.pin);
@@ -174,6 +189,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _statusTimer?.cancel();
     WakelockPlus.disable();
     _webrtcService.dispose();
     _signalingService.disconnect();
@@ -289,12 +305,6 @@ class _CameraScreenState extends State<CameraScreen> {
               tooltip: 'Minimize / Run in Background',
               icon: const Icon(Icons.download_for_offline_outlined, color: Colors.lightBlueAccent),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Streaming in background. Tap notification anytime to return!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
                 _serviceChannel.invokeMethod('moveToBackground');
               },
             ),
@@ -397,8 +407,10 @@ class _CameraScreenState extends State<CameraScreen> {
                           border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
-                          'Battery Saver ON',
+                        child: Text(
+                          _batteryLevel >= 0
+                              ? 'Battery $_batteryLevel%${_batteryState == BatteryState.charging ? ' • Charging' : ''}'
+                              : 'Battery status loading',
                           style: TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -406,29 +418,6 @@ class _CameraScreenState extends State<CameraScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Stealth / Black Screen Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: Icon(_isCameraEnabled ? Icons.visibility_off : Icons.visibility, color: Colors.white),
-                      label: Text(
-                        _isCameraEnabled ? 'Turn Screen OFF (Stealth Mode)' : 'Camera paused remotely',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      onPressed: _toggleStealthMode,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Stealth mode turns display black to save battery & look turned off.',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
-                    textAlign: TextAlign.center,
-                  ),
                 ],
               ),
             ),

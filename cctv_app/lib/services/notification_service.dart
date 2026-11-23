@@ -16,6 +16,10 @@ class NotificationService {
   }
 
   Future<void> showStatus(String title, String body) async {
+    // Keep routine connection/stream events silent. The Android foreground
+    // service still provides the required persistent service notification.
+    if (title != 'Low battery') return;
+
     final key = '$title|$body';
     final now = DateTime.now();
     if (_lastKey == key && _lastAt != null && now.difference(_lastAt!).inSeconds < 3) return;
@@ -26,8 +30,11 @@ class NotificationService {
         'cctv_status',
         'CCTV Status',
         channelDescription: 'Camera and connection status alerts',
-        importance: Importance.defaultImportance,
-        priority: Priority.defaultPriority,
+        importance: Importance.low,
+        priority: Priority.low,
+        playSound: false,
+        enableVibration: false,
+        setAsGroupSummary: false,
       ),
     );
     await plugin.show(1001, title, body, details);
