@@ -313,6 +313,7 @@
       <div class="control-group">
         <button class="btn btn-secondary" onclick="sendRemoteCommand('toggle_flash')">🔦 Flashlight</button>
         <button class="btn btn-secondary" onclick="sendRemoteCommand('switch_camera')">🔄 Switch Cam</button>
+        <button class="btn btn-secondary" onclick="toggleRemoteCamera()" id="cameraToggleBtn">📹 Camera Off</button>
       </div>
     </div>
   </div>
@@ -333,6 +334,7 @@
     let peerConnection = null;
     let currentRoomId = '';
     let incomingMediaStream = null;
+    let remoteCameraEnabled = true;
 
     const iceConfig = {
       iceServers: [
@@ -556,6 +558,18 @@
           value: true
         }));
       }
+    }
+
+    function toggleRemoteCamera() {
+      remoteCameraEnabled = !remoteCameraEnabled;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'remote_command',
+          command: 'set_camera_enabled',
+          value: remoteCameraEnabled
+        }));
+      }
+      document.getElementById('cameraToggleBtn').innerText = remoteCameraEnabled ? '📹 Camera Off' : '📹 Camera On';
     }
 
     function toggleAudio() {

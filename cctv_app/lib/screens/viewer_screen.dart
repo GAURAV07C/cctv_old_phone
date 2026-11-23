@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/signaling_service.dart';
 import '../services/webrtc_service.dart';
+import '../services/notification_service.dart';
 
 class ViewerScreen extends StatefulWidget {
   final String roomId;
@@ -49,6 +50,14 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _signalingService.onConnectionChange = (connected) {
       if (mounted) {
         setState(() => _isServerConnected = connected);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(connected ? 'Connected to CCTV server' : 'Server disconnected; reconnecting...'),
+            backgroundColor: connected ? Colors.green.shade700 : Colors.orange.shade800,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        NotificationService.instance.showStatus('CCTV connection', connected ? 'Connected to server' : 'Disconnected; reconnecting');
         if (connected) {
           _signalingService.joinViewer(widget.roomId, widget.pin);
         }
@@ -63,6 +72,14 @@ class _ViewerScreenState extends State<ViewerScreen> {
             _isStreaming = false;
           }
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(online ? 'Camera is online' : 'Camera went offline'),
+            backgroundColor: online ? Colors.green.shade700 : Colors.red.shade700,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        NotificationService.instance.showStatus('Camera status', online ? 'Camera is online' : 'Camera went offline');
       }
     };
 
@@ -71,6 +88,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
       if (mounted) {
         setState(() => _isStreaming = true);
       }
+      NotificationService.instance.showStatus('Stream started', 'Live camera stream is active');
     };
 
     _signalingService.onIceCandidate = (candidate, cameraSocketId) {
@@ -99,6 +117,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   @override
   void dispose() {
+    NotificationService.instance.showStatus('Stream stopped', 'Viewer session ended');
     _webrtcService.dispose();
     _signalingService.disconnect();
     super.dispose();

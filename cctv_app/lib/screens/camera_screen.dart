@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../services/signaling_service.dart';
 import '../services/webrtc_service.dart';
+import '../services/notification_service.dart';
 
 class CameraScreen extends StatefulWidget {
   final String roomId;
@@ -29,6 +30,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   bool _isConnected = false;
   int _activeViewers = 0;
+  final Set<String> _activeViewerIds = <String>{};
   bool _isStealthMode = false;
   bool _isCameraEnabled = true;
   Future<void>? _cameraStartFuture;
@@ -89,6 +91,14 @@ class _CameraScreenState extends State<CameraScreen> {
     _signalingService.onConnectionChange = (connected) {
       if (mounted) {
         setState(() => _isConnected = connected);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(connected ? 'CCTV server connected' : 'Server disconnected; reconnecting...'),
+            backgroundColor: connected ? Colors.green.shade700 : Colors.orange.shade800,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        NotificationService.instance.showStatus('CCTV server', connected ? 'Camera connected' : 'Disconnected; reconnecting');
         if (connected) {
           _signalingService.registerCamera(widget.roomId, widget.pin);
         }
@@ -96,25 +106,34 @@ class _CameraScreenState extends State<CameraScreen> {
     };
 
     _signalingService.onNewViewer = (viewerSocketId) async {
+      // Signaling can repeat a join after reconnect; count each socket only once.
+      if (!_activeViewerIds.add(viewerSocketId)) {
+        return;
+      }
       // Demand-based battery optimization: capture only while a viewer exists.
       if (_webrtcService.localStream == null) {
         _cameraStartFuture ??= _webrtcService.startLocalCamera();
         await _cameraStartFuture;
         _cameraStartFuture = null;
+        NotificationService.instance.showStatus('Stream started', 'Camera and microphone are active');
       }
       if (mounted) {
-        setState(() => _activeViewers++);
+        setState(() => _activeViewers = _activeViewerIds.length);
       }
+      NotificationService.instance.showStatus('Viewer connected', '$_activeViewers viewer connected');
       await _webrtcService.handleNewViewer(viewerSocketId);
     };
 
     _signalingService.onViewerLeft = (viewerSocketId) {
+      _activeViewerIds.remove(viewerSocketId);
       if (mounted) {
-        setState(() => _activeViewers = (_activeViewers > 0) ? _activeViewers - 1 : 0);
+        setState(() => _activeViewers = _activeViewerIds.length);
       }
+      NotificationService.instance.showStatus('Viewer disconnected', '$_activeViewers viewers connected');
       _webrtcService.removeViewer(viewerSocketId);
       if (_activeViewers == 0) {
         _webrtcService.stopLocalCamera();
+        NotificationService.instance.showStatus('Stream stopped', 'No viewers connected; camera paused');
       }
     };
 

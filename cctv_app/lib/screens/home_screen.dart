@@ -12,7 +12,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _roomIdController = TextEditingController(text: 'HOME-101');
-  final TextEditingController _serverUrlController = TextEditingController(text: 'http://192.168.1.7:3000');
+  final TextEditingController _serverUrlController = TextEditingController(text: 'http://192.168.1.7:3001');
   final TextEditingController _pinController = TextEditingController(text: '123456');
 
   @override

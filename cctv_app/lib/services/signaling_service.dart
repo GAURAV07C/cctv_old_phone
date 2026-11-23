@@ -6,6 +6,11 @@ import 'package:flutter/foundation.dart';
 class SignalingService {
   WebSocket? _socket;
   final String serverUrl;
+  Timer? _reconnectTimer;
+  bool _manualDisconnect = false;
+  String? _lastRoomId;
+  String? _lastRole;
+  String? _lastPin;
 
   // Callbacks
   Function(bool isConnected)? onConnectionChange;
@@ -20,6 +25,7 @@ class SignalingService {
   SignalingService({required this.serverUrl});
 
   Future<void> connect() async {
+    _manualDisconnect = false;
     final urlsToTry = [serverUrl];
     if (!serverUrl.contains('127.0.0.1') && !serverUrl.contains('localhost')) {
       urlsToTry.add('ws://127.0.0.1:3000');
@@ -57,10 +63,12 @@ class SignalingService {
           onDone: () {
             debugPrint('[Signaling] Connection closed');
             onConnectionChange?.call(false);
+            _scheduleReconnect();
           },
           onError: (err) {
             debugPrint('[Signaling] Socket error: $err');
             onConnectionChange?.call(false);
+            _scheduleReconnect();
           },
         );
         return; // Success!
@@ -70,6 +78,19 @@ class SignalingService {
     }
 
     onConnectionChange?.call(false);
+    _scheduleReconnect();
+  }
+
+  void _scheduleReconnect() {
+    if (_manualDisconnect || _reconnectTimer?.isActive == true) return;
+    _reconnectTimer = Timer(const Duration(seconds: 3), () async {
+      await connect();
+      if (_lastRole == 'camera' && _lastRoomId != null && _lastPin != null) {
+        registerCamera(_lastRoomId!, _lastPin!);
+      } else if (_lastRole == 'viewer' && _lastRoomId != null && _lastPin != null) {
+        joinViewer(_lastRoomId!, _lastPin!);
+      }
+    });
   }
 
   void _handleMessage(Map<String, dynamic> msg) {
@@ -118,10 +139,16 @@ class SignalingService {
   }
 
   void registerCamera(String roomId, String pin) {
+    _lastRole = 'camera';
+    _lastRoomId = roomId;
+    _lastPin = pin;
     _send({'type': 'register_camera', 'roomId': roomId, 'pin': pin});
   }
 
   void joinViewer(String roomId, String pin) {
+    _lastRole = 'viewer';
+    _lastRoomId = roomId;
+    _lastPin = pin;
     _send({'type': 'join_viewer', 'roomId': roomId, 'pin': pin});
   }
 
@@ -158,6 +185,8 @@ class SignalingService {
   }
 
   void disconnect() {
+    _manualDisconnect = true;
+    _reconnectTimer?.cancel();
     _socket?.close();
     _socket = null;
   }

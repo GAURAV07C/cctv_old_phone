@@ -12,6 +12,17 @@ class BootReceiver : BroadcastReceiver() {
             action == "android.intent.action.QUICKBOOT_POWERON" ||
             action == Intent.ACTION_MY_PACKAGE_REPLACED) {
 
+            // Start the visible foreground service first so Android can keep
+            // the camera session alive while the activity is being restored.
+            val serviceIntent = Intent(context, CctvForegroundService::class.java).apply {
+                this.action = CctvForegroundService.ACTION_START
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+
             // Launch the main CCTV app automatically on phone boot
             val launchIntent = Intent(context, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
