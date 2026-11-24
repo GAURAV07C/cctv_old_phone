@@ -57,12 +57,24 @@ class _CameraScreenState extends State<CameraScreen> {
     await WakelockPlus.enable();
 
     // Request permissions (Camera, Mic, Notification, Ignore Battery Optimizations)
-    await [
+    final permissionResults = await [
       Permission.camera,
       Permission.microphone,
       Permission.notification,
       Permission.ignoreBatteryOptimizations,
     ].request();
+
+    final cameraGranted =
+        permissionResults[Permission.camera]?.isGranted == true;
+    final microphoneGranted =
+        permissionResults[Permission.microphone]?.isGranted == true;
+    if (!cameraGranted || !microphoneGranted) {
+      debugPrint(
+        '[Permissions] Camera granted: $cameraGranted, '
+        'Microphone granted: $microphoneGranted. Skipping foreground service.',
+      );
+      return;
+    }
 
     // Start Native Android Foreground Service (Survives Recent Apps Swipe)
     try {

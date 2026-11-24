@@ -9,7 +9,7 @@ class NotificationService {
   DateTime? _lastAt;
 
   Future<void> init() async {
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('@drawable/ic_launcher_securecam');
     const settings = InitializationSettings(android: android);
     await plugin.initialize(settings);
     await plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,13 +13,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _defaultRoomId = 'HOME-101';
+  static const _defaultPin = '123456';
+
   final TextEditingController _roomIdController = TextEditingController(
-    text: 'HOME-101',
+    text: _defaultRoomId,
   );
   final TextEditingController _serverUrlController = TextEditingController(
-    text: 'https://smart-cctv-signaling.onrender.com',
+    text: 'http://192.168.1.7:3001',
   );
-  final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _pinController = TextEditingController(
+    text: _defaultPin,
+  );
   bool _obscurePin = true;
 
   @override
@@ -32,35 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadSavedSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedRoom = prefs.getString('saved_room_id');
-    final savedServer = prefs.getString('saved_server_url');
-    final savedPin = prefs.getString('saved_room_pin');
-
-    if (savedRoom != null && savedRoom.isNotEmpty) {
-      _roomIdController.text = savedRoom;
-    }
-    if (savedServer != null && savedServer.isNotEmpty) {
-      // Migrate older local-server settings to the deployed production server.
-      _serverUrlController.text =
-          savedServer.startsWith('http://192.') ||
-              savedServer.startsWith('http://10.') ||
-              savedServer.startsWith('http://localhost')
-          ? 'https://smart-cctv-signaling.onrender.com'
-          : savedServer;
-    }
-    if (savedPin != null && RegExp(r'^\d{6}$').hasMatch(savedPin)) {
-      _pinController.text = savedPin;
-    } else {
-      await _generateAndSavePin();
-    }
-  }
-
-  Future<void> _generateAndSavePin() async {
-    final pin = (100000 + Random.secure().nextInt(900000)).toString();
-    _pinController.text = pin;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_room_pin', pin);
-    if (mounted) setState(() {});
+    await prefs.setString('saved_room_id', _defaultRoomId);
+    await prefs.setString('saved_server_url', _serverUrlController.text);
+    _pinController.text = _defaultPin;
+    await prefs.setString('saved_room_pin', _defaultPin);
   }
 
   Future<void> _saveSettings() async {
@@ -314,14 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ClipboardData(text: _pinController.text),
                               );
                             },
-                          ),
-                          IconButton(
-                            tooltip: 'Generate new PIN',
-                            icon: const Icon(
-                              Icons.refresh,
-                              color: Colors.white54,
-                            ),
-                            onPressed: _generateAndSavePin,
                           ),
                         ],
                       ),

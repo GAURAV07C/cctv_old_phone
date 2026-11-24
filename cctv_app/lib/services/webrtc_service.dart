@@ -22,6 +22,14 @@ class WebRTCService {
 
   final Map<String, dynamic> _iceConfiguration = {
     'iceServers': [
+      {
+        'urls': [
+          'turn:192.168.1.7:3478',
+          'turn:192.168.1.7:3478?transport=tcp',
+        ],
+        'username': 'smartcam',
+        'credential': 'ChangeThisTurnPassword',
+      },
       {'urls': 'stun:stun.relay.metered.ca:80'},
       {
         'urls': [

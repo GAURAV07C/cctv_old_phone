@@ -286,7 +286,7 @@
   <div class="main-card">
     <div class="join-bar">
       <input type="text" id="roomIdInput" placeholder="CAMERA ROOM ID (e.g. HOME-101)" value="HOME-101" />
-      <input type="password" id="pinInput" placeholder="6-digit PIN" value="" maxlength="6" inputmode="numeric" />
+      <input type="password" id="pinInput" placeholder="6-digit PIN" value="123456" maxlength="6" inputmode="numeric" />
       <button class="btn btn-primary" id="connectBtn" onclick="connectToCamera()">
         <span>Connect Live</span>
       </button>
@@ -338,6 +338,14 @@
 
     const iceConfig = {
       iceServers: [
+        {
+          urls: [
+            'turn:192.168.1.7:3478',
+            'turn:192.168.1.7:3478?transport=tcp'
+          ],
+          username: 'smartcam',
+          credential: 'ChangeThisTurnPassword'
+        },
         { urls: 'stun:stun.relay.metered.ca:80' },
         {
           urls: [
