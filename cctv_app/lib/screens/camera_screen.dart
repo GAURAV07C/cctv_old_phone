@@ -226,6 +226,15 @@ class _CameraScreenState extends State<CameraScreen> {
         if (mounted) setState(() => _isCameraEnabled = enabled);
       }
     };
+
+    _signalingService.onOfferRequest = (viewerSocketId) async {
+      debugPrint('[Camera Screen] Offer retry requested for $viewerSocketId');
+      await _webrtcService.setCameraEnabled(true);
+      await _webrtcService.handleNewViewer(viewerSocketId);
+      if (!_isCameraEnabled) {
+        await _webrtcService.setCameraEnabled(false);
+      }
+    };
   }
 
   void _toggleStealthMode() {

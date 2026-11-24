@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 class SignalingService {
@@ -20,6 +21,7 @@ class SignalingService {
   Function(dynamic sdp, String senderSocketId)? onAnswer;
   Function(dynamic candidate, String senderSocketId)? onIceCandidate;
   Function(String command, dynamic value)? onRemoteCommand;
+  Function(String viewerSocketId)? onOfferRequest;
   Function(bool cameraOnline)? onCameraStatus;
 
   SignalingService({required this.serverUrl});
@@ -87,7 +89,9 @@ class SignalingService {
       await connect();
       if (_lastRole == 'camera' && _lastRoomId != null && _lastPin != null) {
         registerCamera(_lastRoomId!, _lastPin!);
-      } else if (_lastRole == 'viewer' && _lastRoomId != null && _lastPin != null) {
+      } else if (_lastRole == 'viewer' &&
+          _lastRoomId != null &&
+          _lastPin != null) {
         joinViewer(_lastRoomId!, _lastPin!);
       }
     });
@@ -129,6 +133,11 @@ class SignalingService {
       case 'execute_command':
         onRemoteCommand?.call(msg['command'], msg['value']);
         break;
+      case 'request_offer':
+        if (msg['viewerSocketId'] != null) {
+          onOfferRequest?.call(msg['viewerSocketId']);
+        }
+        break;
     }
   }
 
@@ -153,19 +162,11 @@ class SignalingService {
   }
 
   void sendOffer(String targetSocketId, dynamic sdp) {
-    _send({
-      'type': 'offer',
-      'targetSocketId': targetSocketId,
-      'sdp': sdp,
-    });
+    _send({'type': 'offer', 'targetSocketId': targetSocketId, 'sdp': sdp});
   }
 
   void sendAnswer(String targetSocketId, dynamic sdp) {
-    _send({
-      'type': 'answer',
-      'targetSocketId': targetSocketId,
-      'sdp': sdp,
-    });
+    _send({'type': 'answer', 'targetSocketId': targetSocketId, 'sdp': sdp});
   }
 
   void sendIceCandidate(String targetSocketId, dynamic candidate) {
@@ -177,11 +178,7 @@ class SignalingService {
   }
 
   void sendRemoteCommand(String command, dynamic value) {
-    _send({
-      'type': 'remote_command',
-      'command': command,
-      'value': value,
-    });
+    _send({'type': 'remote_command', 'command': command, 'value': value});
   }
 
   void disconnect() {

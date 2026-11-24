@@ -438,6 +438,12 @@
               document.getElementById('diagCam').innerText = 'Offline';
               document.getElementById('placeholderText').innerText = 'Camera is offline. Start Camera Mode on your old phone!';
             }
+            if (msg.cameraOnline && ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'request_offer',
+                targetSocketId: ws._cameraSocketId || null
+              }));
+            }
             break;
           }
 

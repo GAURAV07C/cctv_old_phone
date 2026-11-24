@@ -271,6 +271,16 @@ function handleClientMessage(client, msg) {
       }
       break;
     }
+
+    case 'request_offer': {
+      const room = rooms.get(cleanRoomId);
+      if (room && room.camera) {
+        const viewerSocketId = targetSocketId || client.id;
+        console.log(`[Request Offer] ${client.id} -> camera for viewer ${viewerSocketId}`);
+        room.camera.send({ type: 'request_offer', viewerSocketId });
+      }
+      break;
+    }
   }
 }
 

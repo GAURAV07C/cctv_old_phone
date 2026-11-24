@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     text: _defaultRoomId,
   );
   final TextEditingController _serverUrlController = TextEditingController(
-    text: 'http://192.168.1.7:3001',
+    text: 'https://smart-cctv-signaling.onrender.com',
   );
   final TextEditingController _pinController = TextEditingController(
     text: _defaultPin,
@@ -36,7 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadSavedSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('saved_room_id', _defaultRoomId);
-    await prefs.setString('saved_server_url', _serverUrlController.text);
+    await prefs.setString(
+      'saved_server_url',
+      'https://smart-cctv-signaling.onrender.com',
+    );
     _pinController.text = _defaultPin;
     await prefs.setString('saved_room_pin', _defaultPin);
   }
