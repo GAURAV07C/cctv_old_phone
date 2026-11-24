@@ -338,17 +338,16 @@
 
     const iceConfig = {
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun.relay.metered.ca:80' },
         {
           urls: [
-            'turn:openrelay.metered.ca:80',
-            'turn:openrelay.metered.ca:443',
-            'turn:openrelay.metered.ca:443?transport=tcp'
+            'turn:in.relay.metered.ca:80',
+            'turn:in.relay.metered.ca:80?transport=tcp',
+            'turn:in.relay.metered.ca:443',
+            'turns:in.relay.metered.ca:443?transport=tcp'
           ],
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
+          username: '10661142573a1c3eea371670',
+          credential: 'QohXZj5iWp1nlyMk'
         }
       ]
     };
