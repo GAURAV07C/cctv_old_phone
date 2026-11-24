@@ -18,6 +18,8 @@ class WSConnection {
     this.roomId = null;
     this.isAlive = true;
     this.buffer = Buffer.alloc(0);
+    this.fragmentedOpcode = null;
+    this.fragmentedPayload = Buffer.alloc(0);
 
     socket.on('data', (chunk) => this._handleChunk(chunk));
     socket.on('close', () => this._handleClose());
@@ -63,6 +65,7 @@ class WSConnection {
     while (this.buffer.length >= 2) {
       const b0 = this.buffer[0];
       const opcode = b0 & 0x0f;
+      const isFinal = (b0 & 0x80) !== 0;
 
       const b1 = this.buffer[1];
       const isMasked = (b1 & 0x80) !== 0;
@@ -108,6 +111,30 @@ class WSConnection {
       if (opcode === 9) { // Ping
         const pong = Buffer.from([0x8a, 0x00]);
         this.socket.write(pong);
+        continue;
+      }
+
+      // WebSocket messages can be split into multiple frames by proxies or
+      // clients. Accumulate text fragments before parsing JSON; otherwise a
+      // large SDP offer can be parsed halfway through at a boundary such as
+      // 4096 bytes.
+      if (opcode === 1 && !isFinal) {
+        this.fragmentedOpcode = 1;
+        this.fragmentedPayload = Buffer.concat([this.fragmentedPayload, payload]);
+        continue;
+      }
+      if (opcode === 0 && this.fragmentedOpcode === 1) {
+        this.fragmentedPayload = Buffer.concat([this.fragmentedPayload, payload]);
+        if (!isFinal) continue;
+        const completePayload = this.fragmentedPayload;
+        this.fragmentedOpcode = null;
+        this.fragmentedPayload = Buffer.alloc(0);
+        try {
+          const message = JSON.parse(completePayload.toString('utf8'));
+          handleClientMessage(this, message);
+        } catch (e) {
+          console.error('[JSON Parse Error]', e.message);
+        }
         continue;
       }
       if (opcode === 1) { // Text frame
